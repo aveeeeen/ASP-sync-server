@@ -2,8 +2,10 @@
 
 import WebSocket, {WebSocketServer} from 'ws';
 import * as http from 'node:http' // HTTPサーバーも必要（WebSocketはHTTPプロトコル上で動くため）
+import express from 'express'; // コントローラーのホスティングのためにExpressを使用
 
 const PORT = 8080; // サーバーがリッスンするポート番号
+const APPPORT = 3000; // Expressアプリケーションのポート番号
 const HOST = '0.0.0.0'
 
 // HTTPサーバーを作成
@@ -20,6 +22,8 @@ console.log(`WebSocketサーバーをポート ${PORT} で起動中...`);
 // 接続されたクライアントの管理
 const clients = new Set();
 
+let effectId = 0;
+
 wss.on('connection', (ws) => {
     console.log('新しいクライアントが接続しました。');
     clients.add(ws); // 新しいクライアントをセットに追加
@@ -27,7 +31,17 @@ wss.on('connection', (ws) => {
     // クライアントからメッセージを受信した場合
     ws.on('message', (message) => {
         console.log(`クライアントからメッセージを受信: ${message}`);
+        try {
+            message = JSON.parse(message); // 受信したメッセージをJSONとしてパース
+        } catch (error) {
+            console.error('メッセージのパースに失敗:', error);
+            return; // パースに失敗した場合は処理を中断
+        }
         // 必要に応じて、受信したメッセージに応じて何か処理を行う
+        if( message.action === 'selectEffect') {
+            effectId = message.effectId; // 受信したエフェクトIDを保存
+            console.log(`選択されたエフェクトID: ${effectId}`);
+        }
     });
 
     // クライアントが切断した場合
@@ -59,8 +73,7 @@ const broadcastMessage = () => {
         cueId: `cue_${String(messageCounter).padStart(3, '0')}`,
         currentTimestamp: currentTime,
         targetTimestamp: currentTime + 1000, // 現在時刻から500ミリ秒後に実行してほしい
-        effectType: messageCounter % 2 === 0 ? 'particle_burst' : 'color_flash',
-        message: `これは${messageCounter}番目のエフェクトキューです！`,
+        effectId: effectId,
         parameters: {
             color: messageCounter % 3 === 0 ? '#FF0000' : (messageCounter % 3 === 1 ? '#00FF00' : '#0000FF'),
             duration: 1000 // エフェクト表示時間 (ミリ秒)
@@ -86,4 +99,16 @@ setInterval(broadcastMessage, broadcastInterval);
 // HTTPサーバーを起動
 server.listen(PORT, HOST, () => {
     console.log(`HTTPサーバーもポート ${PORT} で起動しました。`);
+});
+
+// Expressアプリケーションを作成
+const app = express();
+// フロントエンドの静的ファイルを提供
+app.use(express.static('public'));
+// Expressアプリケーションを起動   
+app.listen(APPPORT, () => {
+    console.log(`
+    Expressアプリケーションをポート ${APPPORT} で起動しました。
+    フロントエンドは http://localhost:${APPPORT} でアクセスできます。
+    `);
 });
