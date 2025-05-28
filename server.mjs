@@ -82,7 +82,7 @@ const broadcastMessage = () => {
 
     const messageToSend = JSON.stringify(cueData);
 
-    console.log(`[${new Date().toLocaleTimeString()}] ${messageCounter}番目のキューを送信中 (対象時刻: ${cueData.targetTimestamp})...`);
+    console.log(`[${new Date().toLocaleTimeString()}] cueId: ${cueData.cueId}, effectId: ${cueData.effectId} を送信中 (対象時刻: ${cueData.targetTimestamp})...`);
 
     // 全ての接続済みクライアントにメッセージをブロードキャスト
     clients.forEach((client) => {
